@@ -70,25 +70,71 @@ def ious(atlbrs, btlbrs):
     return ious
 
 
-def iou_distance(atracks, btracks):
+# def iou_distance(atracks, btracks):
+#     """
+#     Compute cost based on IoU
+#     :type atracks: list[STrack]
+#     :type btracks: list[STrack]
+
+#     :rtype cost_matrix np.ndarray
+#     """
+
+#     if (len(atracks)>0 and isinstance(atracks[0], np.ndarray)) or (len(btracks) > 0 and isinstance(btracks[0], np.ndarray)):
+#         atlbrs = atracks
+#         btlbrs = btracks
+#     else:
+#         atlbrs = [track.tlbr for track in atracks]
+#         btlbrs = [track.tlbr for track in btracks]
+#     _ious = ious(atlbrs, btlbrs)
+#     cost_matrix = 1 - _ious
+
+#     return cost_matrix
+
+
+def iou_distance(atracks, btracks, dist_weight=1., dist_thresh=400):
     """
-    Compute cost based on IoU
+    Compute cost based on IoU and distance between centroids
     :type atracks: list[STrack]
     :type btracks: list[STrack]
 
     :rtype cost_matrix np.ndarray
     """
 
-    if (len(atracks)>0 and isinstance(atracks[0], np.ndarray)) or (len(btracks) > 0 and isinstance(btracks[0], np.ndarray)):
+    if (len(atracks) > 0 and isinstance(atracks[0], np.ndarray)) or (
+            len(btracks) > 0 and isinstance(btracks[0], np.ndarray)):
         atlbrs = atracks
         btlbrs = btracks
     else:
         atlbrs = [track.tlbr for track in atracks]
         btlbrs = [track.tlbr for track in btracks]
     _ious = ious(atlbrs, btlbrs)
+
     cost_matrix = 1 - _ious
 
+    if atracks and btracks:
+        # Calculate centroids as (x, y)
+        ac = [((box[0] + box[2]) / 2.0, (box[1] + box[3]) / 2.0) for box in atlbrs]
+        bc = [((box[0] + box[2]) / 2.0, (box[1] + box[3]) / 2.0) for box in btlbrs]
+
+        # Convert lists to arrays
+        ac = np.array(ac)
+        bc = np.array(bc)
+
+        # Compute the distance matrix between the boxes
+        print(ac.shape, bc.shape)
+        _dists = cdist(ac, bc, 'euclidean')
+
+        # _dists[_dists > dist_thresh] = dist_thresh
+        _dists /= dist_thresh
+        _dists[_ious > 1e-2] = 0.0
+
+        # Combine IoU and distance-based costs
+        cost_matrix += dist_weight * _dists
+
     return cost_matrix
+
+
+
 
 def v_iou_distance(atracks, btracks):
     """
@@ -123,7 +169,7 @@ def embedding_distance(tracks, detections, metric='cosine'):
         return cost_matrix
     det_features = np.asarray([track.curr_feat for track in detections], dtype=np.float)
     #for i, track in enumerate(tracks):
-        #cost_matrix[i, :] = np.maximum(0.0, cdist(track.smooth_feat.reshape(1,-1), det_features, metric))
+    #cost_matrix[i, :] = np.maximum(0.0, cdist(track.smooth_feat.reshape(1,-1), det_features, metric))
     track_features = np.asarray([track.smooth_feat for track in tracks], dtype=np.float)
     cost_matrix = np.maximum(0.0, cdist(track_features, det_features, metric))  # Nomalized features
     return cost_matrix
