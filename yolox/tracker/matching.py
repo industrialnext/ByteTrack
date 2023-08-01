@@ -37,10 +37,20 @@ def _indices_to_matches(cost_matrix, indices, thresh):
 
 
 def linear_assignment(cost_matrix, thresh):
+    # print("Cost matrix:")
+    # print(cost_matrix)
+
+    # for iy, ix in np.ndindex(cost_matrix.shape):
+    #     print(cost_matrix[iy, ix])
+    #     if (cost_matrix[iy, ix] > 1 or cost_matrix[iy, ix] < 0):
+    #         raise Exception("bruh")
+
     if cost_matrix.size == 0:
         return np.empty((0, 2), dtype=int), tuple(range(cost_matrix.shape[0])), tuple(range(cost_matrix.shape[1]))
     matches, unmatched_a, unmatched_b = [], [], []
     cost, x, y = lap.lapjv(cost_matrix, extend_cost=True, cost_limit=thresh)
+
+
     for ix, mx in enumerate(x):
         if mx >= 0:
             matches.append([ix, mx])
@@ -142,7 +152,8 @@ def gate_cost_matrix(kf, cost_matrix, tracks, detections, only_position=False):
     return cost_matrix
 
 
-def fuse_motion(kf, cost_matrix, tracks, detections, only_position=False, lambda_=0.98):
+# def fuse_motion(kf, cost_matrix, tracks, detections, only_position=False, lambda_=0.98):
+def fuse_motion(kf, cost_matrix, tracks, detections, only_position=False, lambda_=0.90):
     if cost_matrix.size == 0:
         return cost_matrix
     gating_dim = 2 if only_position else 4

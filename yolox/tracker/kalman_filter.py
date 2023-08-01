@@ -19,6 +19,9 @@ chi2inv95 = {
     8: 15.507,
     9: 16.919}
 
+ASPECT_RATIO = 1e-2
+ASPECT_VELOCITY = 1e-5
+
 
 class KalmanFilter(object):
     """
@@ -49,8 +52,12 @@ class KalmanFilter(object):
         # Motion and observation uncertainty are chosen relative to the current
         # state estimate. These weights control the amount of uncertainty in
         # the model. This is a bit hacky.
-        self._std_weight_position = 1. / 20
-        self._std_weight_velocity = 1. / 160
+
+        # self._std_weight_position = 1. / 20 # original
+        self._std_weight_position = 1. / 17
+
+        # self._std_weight_velocity = 160. / 160 # original
+        self._std_weight_velocity = 1. / 10
 
     def initiate(self, measurement):
         """Create track from unassociated measurement.
@@ -77,10 +84,13 @@ class KalmanFilter(object):
             2 * self._std_weight_position * measurement[3],
             2 * self._std_weight_position * measurement[3],
             1e-2,
+            # ASPECT_RATIO,
             2 * self._std_weight_position * measurement[3],
+
             10 * self._std_weight_velocity * measurement[3],
             10 * self._std_weight_velocity * measurement[3],
             1e-5,
+            # ASPECT_VELOCITY,
             10 * self._std_weight_velocity * measurement[3]]
         covariance = np.diag(np.square(std))
         return mean, covariance
@@ -107,12 +117,12 @@ class KalmanFilter(object):
         std_pos = [
             self._std_weight_position * mean[3],
             self._std_weight_position * mean[3],
-            1e-2,
+            ASPECT_RATIO,
             self._std_weight_position * mean[3]]
         std_vel = [
             self._std_weight_velocity * mean[3],
             self._std_weight_velocity * mean[3],
-            1e-5,
+            ASPECT_VELOCITY,
             self._std_weight_velocity * mean[3]]
         motion_cov = np.diag(np.square(np.r_[std_pos, std_vel]))
 
@@ -171,12 +181,12 @@ class KalmanFilter(object):
         std_pos = [
             self._std_weight_position * mean[:, 3],
             self._std_weight_position * mean[:, 3],
-            1e-2 * np.ones_like(mean[:, 3]),
+            ASPECT_RATIO * np.ones_like(mean[:, 3]),
             self._std_weight_position * mean[:, 3]]
         std_vel = [
             self._std_weight_velocity * mean[:, 3],
             self._std_weight_velocity * mean[:, 3],
-            1e-5 * np.ones_like(mean[:, 3]),
+            ASPECT_VELOCITY * np.ones_like(mean[:, 3]),
             self._std_weight_velocity * mean[:, 3]]
         sqr = np.square(np.r_[std_pos, std_vel]).T
 
@@ -251,6 +261,12 @@ class KalmanFilter(object):
             squared Mahalanobis distance between (mean, covariance) and
             `measurements[i]`.
         """
+
+        # print("BEEP BOOP")
+
+        # raise Exception("Date provided can't be in the past")
+
+
         mean, covariance = self.project(mean, covariance)
         if only_position:
             mean, covariance = mean[:2], covariance[:2, :2]
